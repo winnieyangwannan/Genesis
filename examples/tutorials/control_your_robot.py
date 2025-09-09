@@ -1,3 +1,10 @@
+# 1. Control Methods
+# Genesis offers three main ways to control robots:
+
+# 1. Position Control: Set target joint positions using the built-in PD controller 🕹️ Control Your Robot — Genesis 0.2.0 documentation
+# 2. Velocity Control: Set target joint velocities
+# 3. Force/Torque Control: Directly set torque/force applied to each joint
+
 import numpy as np
 
 import genesis as gs
