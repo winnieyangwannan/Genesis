@@ -122,16 +122,28 @@ def get_train_cfg(exp_name, max_iterations):
 
 
 def get_task_cfgs():
+    # ACTION:
+        # Control: 6-DOF end-effector control (3D position + 3D orientation)
+        # Action Space: 6 continuous actions with scales [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]:
+        # The 6 actions correspond to:
+            # - Actions 0-2: 3D position deltas (δx, δy, δz)
+            # - Actions 3-5: 3D orientation deltas (δroll, δpitch, δyaw)
+
+            # All scaled by 0.05, meaning maximum movement per timestep is 5cm in position and ~2.9° in rotation.
+    # OBJECT:
+        # - Box dimensions: [0.08, 0.03, 0.06] meters (8cm × 3cm × 6cm) - a small rectangular box
+        # - Physics: Initially fixed in place (box_fixed: True), no collision during training (box_collision: False)
+        # - Placement: Randomly positioned and oriented within reach of the robot
     env_cfg = {
         "num_envs": 10,
         "num_obs": 14,
-        "num_actions": 6,
+        "num_actions": 6, #Action Space: 6 continuous actions with scales [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
         "action_scales": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
         "episode_length_s": 3.0,
         "ctrl_dt": 0.01,
-        "box_size": [0.08, 0.03, 0.06],
-        "box_collision": False,
-        "box_fixed": True,
+        "box_size": [0.08, 0.03, 0.06], # Box dimensions: [0.08, 0.03, 0.06] meters, (8cm × 3cm × 6cm) - a small rectangular box
+        "box_collision": False, # no collision during training
+        "box_fixed": True, # Physics: Initially fixed in place (box_fixed: True), 
         "image_resolution": (64, 64),
         "use_rasterizer": True,
         "visualize_camera": False,
@@ -139,7 +151,8 @@ def get_task_cfgs():
     reward_scales = {
         "keypoints": 1.0,
     }
-    # panda robot specific
+    # ROBOT:
+    #  Panda robotic arm with 7-DOF arm + 2-DOF gripper
     robot_cfg = {
         "ee_link_name": "hand",
         "gripper_link_names": ["left_finger", "right_finger"],
