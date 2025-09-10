@@ -77,6 +77,7 @@ class Go2Env:
         self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motors_dof_idx)
 
         # prepare reward functions and multiply reward scales by dt
+        # Dynamic Reward System
         self.reward_functions, self.episode_sums = dict(), dict()
         for name in self.reward_scales.keys():
             self.reward_scales[name] *= self.dt
@@ -241,21 +242,27 @@ class Go2Env:
         return self.obs_buf, None
 
     # ------------ reward functions----------------
+    #Tracking Rewards (Positive)
     def _reward_tracking_lin_vel(self):
+        #  Exponential reward for following X,Y velocity commands
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
 
     def _reward_tracking_ang_vel(self):
+        #  Exponential reward for following yaw rate commands
         # Tracking of angular velocity commands (yaw)
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error / self.reward_cfg["tracking_sigma"])
-
+    
+    # Penalty Rewards (Negative):
     def _reward_lin_vel_z(self):
+        # Quadratic penalty for vertical velocity
         # Penalize z axis base linear velocity
         return torch.square(self.base_lin_vel[:, 2])
 
     def _reward_action_rate(self):
+        # Quadratic penalty for action smoothness
         # Penalize changes in actions
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
 

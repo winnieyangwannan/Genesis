@@ -122,6 +122,8 @@ def get_cfgs():
             "dof_vel": 0.05,
         },
     }
+    # Reward Configuration
+    # Heavy Height Penalty (-50)
     reward_cfg = {
         "tracking_sigma": 0.25,
         "base_height_target": 0.3,
