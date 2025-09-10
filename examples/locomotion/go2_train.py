@@ -4,6 +4,7 @@ import pickle
 import shutil
 from importlib import metadata
 
+#  RL  Library: rsl-rl-lib (version 2.2.4 specifically required)
 try:
     try:
         if metadata.version("rsl-rl"):
@@ -21,6 +22,7 @@ from go2_env import Go2Env
 
 
 def get_train_cfg(exp_name, max_iterations):
+    #  RL Algorithm: PPO
     train_cfg_dict = {
         "algorithm": {
             "class_name": "PPO",
@@ -57,7 +59,7 @@ def get_train_cfg(exp_name, max_iterations):
             "run_name": "",
         },
         "runner_class_name": "OnPolicyRunner",
-        "num_steps_per_env": 24,
+        "num_steps_per_env": 24, # Each simulated robot collects exactly 24 time steps ofexperience before the policy gets updated.
         "save_interval": 100,
         "empirical_normalization": None,
         "seed": 1,
@@ -150,7 +152,7 @@ def get_cfgs():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="go2-walking")
-    parser.add_argument("-B", "--num_envs", type=int, default=4096)
+    parser.add_argument("-B", "--num_envs", type=int, default=4096) # 4096 identical Go2 robots are simulated simultaneously onthe GPU, each learning the same walking task independently.
     parser.add_argument("--max_iterations", type=int, default=101)
     args = parser.parse_args()
 
