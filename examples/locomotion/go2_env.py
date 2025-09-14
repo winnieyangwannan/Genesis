@@ -1,3 +1,4 @@
+from tkinter.tix import Control
 import torch
 import math
 import genesis as gs
@@ -9,7 +10,22 @@ def gs_rand_float(lower, upper, shape, device):
 
 
 class Go2Env:
-    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False):
+
+    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False, add_camera=False, camera_config=None):
+        """
+        The __init__ function sets up the simulation environment with the following steps:
+
+        1. Control Frequency. The simulation runs at 50 Hz, matching the real robot’s control frequency. To further bridge sim2real gap, we also manually simulate the action latecy (~20ms, one dt) shown on the real robot.
+
+        2. Scene Creation. A simulation scene is created, including the robot and a static plane.
+
+        3. PD Controller Setup. Motors are first identified based on their names. Stiffness and damping are then set for each motor.
+
+        4. Reward Registration. Reward functions, defined in the configuration, are registered to guide the policy. These functions will be explained in the “Reward” section.
+
+        5. Buffer Initialization. Buffers are initialized to store environment states, observations, and rewards
+
+        """
         self.num_envs = num_envs
         self.num_obs = obs_cfg["num_obs"]
         self.num_privileged_obs = None
@@ -65,6 +81,17 @@ class Go2Env:
                 quat=self.base_init_quat.cpu().numpy(),
             ),
         )
+
+        # add camera if requested (must be before scene.build())
+        self.camera = None
+        if add_camera and camera_config is not None:
+            self.camera = self.scene.add_camera(
+                res=camera_config.get('res', (1280, 720)),
+                pos=camera_config.get('pos', (3.5, 0.0, 2.5)),
+                lookat=camera_config.get('lookat', (0, 0, 0.5)),
+                fov=camera_config.get('fov', 40),
+                GUI=camera_config.get('GUI', False),
+            )
 
         # build
         self.scene.build(n_envs=num_envs)
@@ -122,6 +149,15 @@ class Go2Env:
         self.commands[envs_idx, 2] = gs_rand_float(*self.command_cfg["ang_vel_range"], (len(envs_idx),), gs.device)
 
     def step(self, actions):
+        """
+        The step function takes the action for execution and returns new observations and rewards.
+        Here is how it works:
+        1. Action Execution. The input action will be clipped, rescaled, and added on top of default motor positions. The transformed action, representing target joint positions, will then be sent to the robot controller for one-step execution.
+        2. State Updates. Robot states, such as joint positions and velocities, are retrieved and stored in buffers.
+        3. Termination Checks. Environments are terminated if (1) Episode length exceeds the maximum allowed (2) The robot’s body orientation deviates significantly. Terminated environments are reset automatically.
+        4. Reward Computation.
+        5. Observation Computation. Observation used for training includes base angular velocity, projected gravity, commands, dof position, dof velocity, and previous actions.
+        """
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
         exec_actions = self.last_actions if self.simulate_action_latency else self.actions
         target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
@@ -161,6 +197,9 @@ class Go2Env:
         self.extras["time_outs"] = torch.zeros_like(self.reset_buf, device=gs.device, dtype=gs.tc_float)
         self.extras["time_outs"][time_out_idx] = 1.0
 
+        # Reset
+        # The reset_idx function resets the initial pose and state buffers of the specified environments.
+        # This ensures robots start from predefined configurations, crucial for consistent training.
         self.reset_idx(self.reset_buf.nonzero(as_tuple=False).reshape((-1,)))
 
         # compute reward
@@ -237,11 +276,30 @@ class Go2Env:
         self._resample_commands(envs_idx)
 
     def reset(self):
+        """
+        The reset_idx function resets the initial pose and state buffers of the specified environments. 
+        This ensures robots start from predefined configurations, crucial for consistent training.
+        """
         self.reset_buf[:] = True
         self.reset_idx(torch.arange(self.num_envs, device=gs.device))
         return self.obs_buf, None
 
-    # ------------ reward functions----------------
+    # ------------ REWARD FUNCTIONS----------------
+    """
+    Reward functions are critical for policy guidance. In this example, we use:
+
+    tracking_lin_vel: Tracking of linear velocity commands (xy axes)
+
+    tracking_ang_vel: Tracking of angular velocity commands (yaw)
+
+    lin_vel_z: Penalize z axis base linear velocity
+
+    action_rate: Penalize changes in actions
+
+    base_height: Penalize base height away from target
+
+    similar_to_default: Encourage the robot pose to be similar to the default pose
+    """
     #Tracking Rewards (Positive)
     def _reward_tracking_lin_vel(self):
         #  Exponential reward for following X,Y velocity commands

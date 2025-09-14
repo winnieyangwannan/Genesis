@@ -2,6 +2,8 @@ import argparse
 import os
 import pickle
 import shutil
+import time
+from datetime import datetime
 from importlib import metadata
 
 #  RL  Library: rsl-rl-lib (version 2.2.4 specifically required)
@@ -19,6 +21,33 @@ from rsl_rl.runners import OnPolicyRunner
 import genesis as gs
 
 from go2_env import Go2Env
+
+
+def log_train_time(start_time, end_time, args, log_dir):
+    """Log training timing information to train_log.md"""
+    duration = end_time - start_time
+    
+    # Prepare log entry
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"""
+## Training Run - {timestamp}
+
+**Experiment:** {args.exp_name}
+**Number of Environments:** {args.num_envs}
+**Max Iterations:** {args.max_iterations}
+**Duration:** {duration:.2f} seconds ({duration/60:.2f} minutes) ({duration/3600:.2f} hours)
+**Iterations/Second:** {args.max_iterations/duration:.4f}
+**Seconds/Iteration:** {duration/args.max_iterations:.2f}
+
+---
+"""
+    
+    # Append to log file
+    log_file = f"{log_dir}/train_log.md"
+    with open(log_file, "a") as f:
+        f.write(log_entry)
+    
+    print(f"Training timing logged to {log_file}")
 
 
 def get_train_cfg(exp_name, max_iterations):
@@ -177,7 +206,20 @@ def main():
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 
+    # Start timing the training
+    train_start_time = time.time()
+    print(f"Starting training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Training {args.num_envs} environments for {args.max_iterations} iterations")
+
     runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
+
+    # End timing and log results
+    train_end_time = time.time()
+    print(f"Training completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Total training time: {train_end_time - train_start_time:.2f} seconds ({(train_end_time - train_start_time)/60:.2f} minutes)")
+    
+    # Log the timing information
+    log_train_time(train_start_time, train_end_time, args, log_dir)
 
 
 if __name__ == "__main__":
