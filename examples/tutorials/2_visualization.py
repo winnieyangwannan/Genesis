@@ -1,3 +1,10 @@
+# NOTE: There are two ways for visualizing the scene:
+# 1). using the interactive viewer that runs in a separate thread, and
+# 2). by manually adding cameras to the scene and render images using the camera.
+#
+# This tutorial demonstrates method 2 (camera rendering) for headless environments
+# where no display is available (e.g., remote development servers).
+# LINK: https://genesis-world.readthedocs.io/en/latest/user_guide/getting_started/visualization.html
 import genesis as gs
 
 gs.init()

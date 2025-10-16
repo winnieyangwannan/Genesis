@@ -1,6 +1,6 @@
 import argparse
-import re
 import pickle
+import re
 from importlib import metadata
 from pathlib import Path
 
@@ -14,13 +14,14 @@ try:
         if metadata.version("rsl-rl-lib") != "2.2.4":
             raise ImportError
 except (metadata.PackageNotFoundError, ImportError) as e:
-    raise ImportError("Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'.") from e
-from rsl_rl.runners import OnPolicyRunner
-
+    raise ImportError(
+        "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
+    ) from e
 import genesis as gs
+from behavior_cloning import BehaviorCloning
 
 from grasp_env import GraspEnv
-from behavior_cloning import BehaviorCloning
+from rsl_rl.runners import OnPolicyRunner
 
 
 def load_rl_policy(env, train_cfg, log_dir):
@@ -28,7 +29,9 @@ def load_rl_policy(env, train_cfg, log_dir):
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 
     # Find the latest checkpoint
-    checkpoint_files = [f for f in log_dir.iterdir() if re.match(r"model_\d+\.pt", f.name)]
+    checkpoint_files = [
+        f for f in log_dir.iterdir() if re.match(r"model_\d+\.pt", f.name)
+    ]
     if not checkpoint_files:
         raise FileNotFoundError(f"No checkpoint files found in {log_dir}")
 
@@ -48,7 +51,9 @@ def load_bc_policy(env, bc_cfg, log_dir):
     bc_runner = BehaviorCloning(env, bc_cfg, None, device=gs.device)
 
     # Find the latest checkpoint
-    checkpoint_files = [f for f in log_dir.iterdir() if re.match(r"checkpoint_\d+\.pt", f.name)]
+    checkpoint_files = [
+        f for f in log_dir.iterdir() if re.match(r"checkpoint_\d+\.pt", f.name)
+    ]
     if not checkpoint_files:
         raise FileNotFoundError(f"No checkpoint files found in {log_dir}")
 
@@ -95,10 +100,14 @@ def main():
     # Load configurations
     if args.stage == "rl":
         # For RL, load the standard configs
-        env_cfg, reward_cfg, robot_cfg, rl_train_cfg, bc_train_cfg = pickle.load(open(log_dir / "cfgs.pkl", "rb"))
+        env_cfg, reward_cfg, robot_cfg, rl_train_cfg, bc_train_cfg = pickle.load(
+            open(log_dir / "cfgs.pkl", "rb")
+        )
     else:
         # For BC, we need to load the configs and create BC config
-        env_cfg, reward_cfg, robot_cfg, rl_train_cfg, bc_train_cfg = pickle.load(open(log_dir / "cfgs.pkl", "rb"))
+        env_cfg, reward_cfg, robot_cfg, rl_train_cfg, bc_train_cfg = pickle.load(
+            open(log_dir / "cfgs.pkl", "rb")
+        )
 
     # set the max FPS for visualization
     env_cfg["max_visualize_FPS"] = 60
@@ -115,7 +124,7 @@ def main():
         env_cfg=env_cfg,
         reward_cfg=reward_cfg,
         robot_cfg=robot_cfg,
-        show_viewer=True,
+        show_viewer=False,  #  Use `show_viewer=False` for headless mode.
     )
 
     # Load the appropriate policy based on model type
@@ -153,9 +162,15 @@ def main():
         env.grasp_and_lift_demo()
         if args.record:
             print("Stopping video recording...")
-            env.vis_cam.stop_recording(save_to_filename="video.mp4", fps=env_cfg["max_visualize_FPS"])
-            env.left_cam.stop_recording(save_to_filename="left_cam.mp4", fps=env_cfg["max_visualize_FPS"])
-            env.right_cam.stop_recording(save_to_filename="right_cam.mp4", fps=env_cfg["max_visualize_FPS"])
+            env.vis_cam.stop_recording(
+                save_to_filename="video.mp4", fps=env_cfg["max_visualize_FPS"]
+            )
+            env.left_cam.stop_recording(
+                save_to_filename="left_cam.mp4", fps=env_cfg["max_visualize_FPS"]
+            )
+            env.right_cam.stop_recording(
+                save_to_filename="right_cam.mp4", fps=env_cfg["max_visualize_FPS"]
+            )
 
 
 if __name__ == "__main__":

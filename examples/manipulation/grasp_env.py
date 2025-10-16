@@ -1,13 +1,9 @@
-import torch
 import math
 from typing import Literal
 
 import genesis as gs
-from genesis.utils.geom import (
-    xyz_to_quat,
-    transform_quat_by_quat,
-    transform_by_quat,
-)
+import torch
+from genesis.utils.geom import transform_by_quat, transform_quat_by_quat, xyz_to_quat
 
 
 class GraspEnv:
@@ -83,12 +79,14 @@ class GraspEnv:
                 ),
             ),
         )
-        if self.env_cfg["visualize_camera"]:
+        if self.env_cfg[
+            "visualize_camera"
+        ]:  # Visualization/monitoring camera for debugging
             self.vis_cam = self.scene.add_camera(
-                res=(1280, 720),
-                pos=(1.5, 0.0, 0.2),
+                res=(1280, 720),  # Resolution: 1280x720 (HD quality)
+                pos=(1.5, 0.0, 0.2),  # side view
                 lookat=(0.0, 0.0, 0.2),
-                fov=60,
+                fov=60,  # Field of view: 60°
                 GUI=self.env_cfg["visualize_camera"],
                 debug=True,
             )
@@ -119,15 +117,21 @@ class GraspEnv:
         for name in self.reward_scales.keys():
             self.reward_scales[name] *= self.ctrl_dt
             self.reward_functions[name] = getattr(self, "_reward_" + name)
-            self.episode_sums[name] = torch.zeros((self.num_envs,), device=gs.device, dtype=gs.tc_float)
+            self.episode_sums[name] = torch.zeros(
+                (self.num_envs,), device=gs.device, dtype=gs.tc_float
+            )
 
-        self.keypoints_offset = self.get_keypoint_offsets(batch_size=self.num_envs, device=self.device, unit_length=0.5)
+        self.keypoints_offset = self.get_keypoint_offsets(
+            batch_size=self.num_envs, device=self.device, unit_length=0.5
+        )
         # == init buffers ==
         self._init_buffers()
         self.reset()
 
     def _init_buffers(self) -> None:
-        self.episode_length_buf = torch.zeros((self.num_envs,), device=gs.device, dtype=gs.tc_int)
+        self.episode_length_buf = torch.zeros(
+            (self.num_envs,), device=gs.device, dtype=gs.tc_int
+        )
         self.reset_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=gs.device)
         self.goal_pose = torch.zeros(self.num_envs, 7, device=gs.device)
         self.extras = dict()
@@ -144,14 +148,20 @@ class GraspEnv:
         # reset object
         num_reset = len(envs_idx)
         random_x = torch.rand(num_reset, device=self.device) * 0.4 + 0.2  # 0.2 ~ 0.6
-        random_y = (torch.rand(num_reset, device=self.device) - 0.5) * 0.5  # -0.25 ~ 0.25
+        random_y = (
+            torch.rand(num_reset, device=self.device) - 0.5
+        ) * 0.5  # -0.25 ~ 0.25
         random_z = torch.ones(num_reset, device=self.device) * 0.025  # 0.15 ~ 0.15
         random_pos = torch.stack([random_x, random_y, random_z], dim=-1)
 
         # downward facing quaternion to align with the hand
-        q_downward = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device).repeat(num_reset, 1)
+        q_downward = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device).repeat(
+            num_reset, 1
+        )
         # randomly yaw the object
-        random_yaw = (torch.rand(num_reset, device=self.device) * 2 * math.pi - math.pi) * 0.25
+        random_yaw = (
+            torch.rand(num_reset, device=self.device) * 2 * math.pi - math.pi
+        ) * 0.25
         q_yaw = torch.stack(
             [
                 torch.cos(random_yaw / 2),
@@ -171,7 +181,8 @@ class GraspEnv:
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
             self.extras["episode"]["rew_" + key] = (
-                torch.mean(self.episode_sums[key][envs_idx]).item() / self.env_cfg["episode_length_s"]
+                torch.mean(self.episode_sums[key][envs_idx]).item()
+                / self.env_cfg["episode_length_s"]
             )
             self.episode_sums[key][envs_idx] = 0.0
 
@@ -182,7 +193,9 @@ class GraspEnv:
         obs, self.extras = self.get_observations()
         return obs, self.extras
 
-    def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+    def step(
+        self, actions: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
         # update time
         self.episode_length_buf += 1
 
@@ -220,7 +233,9 @@ class GraspEnv:
 
         # fill time out buffer for reward/value bootstrapping
         time_out_idx = (time_out_buf).nonzero(as_tuple=False).reshape((-1,))
-        self.extras["time_outs"] = torch.zeros_like(self.reset_buf, device=gs.device, dtype=gs.tc_float)
+        self.extras["time_outs"] = torch.zeros_like(
+            self.reset_buf, device=gs.device, dtype=gs.tc_float
+        )
         self.extras["time_outs"][time_out_idx] = 1.0
         return self.reset_buf.nonzero(as_tuple=True)[0]
 
@@ -247,8 +262,12 @@ class GraspEnv:
         return rescaled_action
 
     def get_stereo_rgb_images(self, normalize: bool = True) -> torch.Tensor:
-        rgb_left, _, _, _ = self.left_cam.render(rgb=True, depth=False, segmentation=False, normal=False)
-        rgb_right, _, _, _ = self.right_cam.render(rgb=True, depth=False, segmentation=False, normal=False)
+        rgb_left, _, _, _ = self.left_cam.render(
+            rgb=True, depth=False, segmentation=False, normal=False
+        )
+        rgb_right, _, _, _ = self.right_cam.render(
+            rgb=True, depth=False, segmentation=False, normal=False
+        )
 
         # Convert to proper format
         rgb_left = rgb_left.permute(0, 3, 1, 2)[:, :3]  # shape (B, 3, H, W)
@@ -278,8 +297,12 @@ class GraspEnv:
             self.robot.center_finger_pose[:, 3:7],
             keypoints_offset,
         )
-        object_pos_keypoints = self._to_world_frame(self.object.get_pos(), self.object.get_quat(), keypoints_offset)
-        dist = torch.norm(finger_pos_keypoints - object_pos_keypoints, p=2, dim=-1).sum(-1)
+        object_pos_keypoints = self._to_world_frame(
+            self.object.get_pos(), self.object.get_quat(), keypoints_offset
+        )
+        dist = torch.norm(finger_pos_keypoints - object_pos_keypoints, p=2, dim=-1).sum(
+            -1
+        )
         return torch.exp(-dist)
 
     # ------------ end reward functions----------------
@@ -292,11 +315,15 @@ class GraspEnv:
     ) -> torch.Tensor:
         world = torch.zeros_like(keypoints_offset)
         for k in range(keypoints_offset.shape[1]):
-            world[:, k] = position + transform_by_quat(keypoints_offset[:, k], quaternion)
+            world[:, k] = position + transform_by_quat(
+                keypoints_offset[:, k], quaternion
+            )
         return world
 
     @staticmethod
-    def get_keypoint_offsets(batch_size: int, device: str, unit_length: float = 0.5) -> torch.Tensor:
+    def get_keypoint_offsets(
+        batch_size: int, device: str, unit_length: float = 0.5
+    ) -> torch.Tensor:
         """
         Get uniformly-spaced keypoints along a line of unit length, centered at body center.
         """
@@ -331,7 +358,9 @@ class GraspEnv:
         final_pose[:, 1] = 0.0
         final_pose[:, 2] = 0.4
         # reset pose (home pose)
-        reset_pose = torch.tensor([0.2, 0.0, 0.4, 0.0, 1.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
+        reset_pose = torch.tensor(
+            [0.2, 0.0, 0.4, 0.0, 1.0, 0.0, 0.0], device=self.device
+        ).repeat(self.num_envs, 1)
         for i in range(total_steps):
             if i < total_steps / 4:  # grasping
                 self.robot.go_to_goal(goal_pose, open_gripper=False)
@@ -399,8 +428,12 @@ class Manipulator:
         self._left_finger_dof = self._fingers_dof[0]
         self._right_finger_dof = self._fingers_dof[1]
         self._ee_link = self._robot_entity.get_link(self._args["ee_link_name"])
-        self._left_finger_link = self._robot_entity.get_link(self._args["gripper_link_names"][0])
-        self._right_finger_link = self._robot_entity.get_link(self._args["gripper_link_names"][1])
+        self._left_finger_link = self._robot_entity.get_link(
+            self._args["gripper_link_names"][0]
+        )
+        self._right_finger_link = self._robot_entity.get_link(
+            self._args["gripper_link_names"][1]
+        )
         self._default_joint_angles = self._args["default_arm_dof"]
         if self._args["default_gripper_dof"] is not None:
             self._default_joint_angles += self._args["default_gripper_dof"]
@@ -463,9 +496,13 @@ class Manipulator:
         lambda_val = 0.01
         jacobian = self._robot_entity.get_jacobian(link=self._ee_link)
         jacobian_T = jacobian.transpose(1, 2)
-        lambda_matrix = (lambda_val**2) * torch.eye(n=jacobian.shape[1], device=self._device)
+        lambda_matrix = (lambda_val**2) * torch.eye(
+            n=jacobian.shape[1], device=self._device
+        )
         delta_joint_pos = (
-            jacobian_T @ torch.inverse(jacobian @ jacobian_T + lambda_matrix) @ delta_pose.unsqueeze(-1)
+            jacobian_T
+            @ torch.inverse(jacobian @ jacobian_T + lambda_matrix)
+            @ delta_pose.unsqueeze(-1)
         ).squeeze(-1)
         return self._robot_entity.get_qpos() + delta_joint_pos
 
