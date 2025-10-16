@@ -271,6 +271,7 @@ class Go2Env:
             self.extras["episode"]["rew_" + key] = (
                 torch.mean(self.episode_sums[key][envs_idx]).item() / self.env_cfg["episode_length_s"]
             )
+
             self.episode_sums[key][envs_idx] = 0.0
 
         self._resample_commands(envs_idx)

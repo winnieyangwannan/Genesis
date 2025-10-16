@@ -16,6 +16,9 @@ scene = gs.Scene(
         dt=0.01,
     ),
     show_viewer=True,
+    rigid_options=gs.options.RigidOptions(
+        enable_collision=True,
+    ),
 )
 
 ########################## entities ##########################
@@ -34,6 +37,15 @@ franka = scene.add_entity(
 ########################## build ##########################
 scene.build()
 
+# Add a camera for video recording
+camera = scene.add_camera(
+    res=(1280, 720),
+    pos=(3, -1, 1.5),
+    lookat=(0.0, 0.0, 0.5),
+    fov=30,
+    GUI=False,
+)
+
 motors_dof = np.arange(7)
 fingers_dof = np.arange(7, 9)
 
@@ -50,6 +62,10 @@ franka.set_dofs_force_range(
 )
 
 end_effector = franka.get_link("hand")
+
+# Start video recording
+print("Starting video recording...")
+camera.start_recording()
 
 # move to pre-grasp pose
 qpos = franka.inverse_kinematics(
@@ -70,6 +86,7 @@ path_debug = scene.draw_debug_path(path, franka)
 for waypoint in path:
     franka.control_dofs_position(waypoint)
     scene.step()
+    camera.render()  # render camera for video recording
 
 # remove the drawn path
 scene.clear_debug_object(path_debug)
@@ -77,6 +94,7 @@ scene.clear_debug_object(path_debug)
 # allow robot to reach the last waypoint
 for i in range(100):
     scene.step()
+    camera.render()  # render camera for video recording
 
 # reach
 qpos = franka.inverse_kinematics(
@@ -88,6 +106,7 @@ print(qpos)
 franka.control_dofs_position(qpos[:-2], motors_dof)
 for i in range(100):
     scene.step()
+    camera.render()  # render camera for video recording
 
 # grasp
 franka.control_dofs_position(qpos[:-2], motors_dof)
@@ -95,6 +114,7 @@ franka.control_dofs_force(np.array([-0.5, -0.5]), fingers_dof)
 
 for i in range(100):
     scene.step()
+    camera.render()  # render camera for video recording
 
 # lift
 qpos = franka.inverse_kinematics(
@@ -106,3 +126,8 @@ print(qpos)
 franka.control_dofs_position(qpos[:-2], motors_dof)
 for i in range(200):
     scene.step()
+    camera.render()  # render camera for video recording
+
+# Stop video recording and save
+print("Stopping video recording...")
+camera.stop_recording(save_to_filename="franka_grasp_demo.mp4", fps=60)
