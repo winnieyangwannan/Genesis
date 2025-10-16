@@ -1,6 +1,13 @@
 import genesis as gs
 import numpy as np
 
+"""
+both IK solving and motion planning are two integrated methods of the robot entity.
+For IK solving, you simply tell the robot’s IK solver which link is the end-effector, and specify the target pose.
+Then, you tell the motion planner the target joint position (qpos) and it will return a planned and smoothed list of waypoints.
+"""
+
+
 ########################## init ##########################
 gs.init(backend=gs.gpu)
 
@@ -36,6 +43,20 @@ franka = scene.add_entity(
 )
 
 
+# set control gains
+# Note: the following values are tuned for achieving best behavior with Franka
+# Typically, each new robot would have a different set of parameters.
+# Sometimes high-quality URDF or XML file would also provide this and will be parsed.
+franka.set_dofs_kp(
+    np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]),
+)
+franka.set_dofs_kv(
+    np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]),
+)
+franka.set_dofs_force_range(
+    np.array([-87, -87, -87, -87, -12, -12, -12, -100, -100]),
+    np.array([87, 87, 87, 87, 12, 12, 12, 100, 100]),
+)
 # Add a camera for video recording
 camera = scene.add_camera(
     res=(1280, 720),
@@ -50,18 +71,7 @@ scene.build()
 motors_dof = np.arange(7)
 fingers_dof = np.arange(7, 9)
 
-# set control gains
-franka.set_dofs_kp(
-    np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]),
-)
-franka.set_dofs_kv(
-    np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]),
-)
-franka.set_dofs_force_range(
-    np.array([-87, -87, -87, -87, -12, -12, -12, -100, -100]),
-    np.array([87, 87, 87, 87, 12, 12, 12, 100, 100]),
-)
-
+# get the end-effector link
 end_effector = franka.get_link("hand")
 
 # Start video recording
@@ -69,6 +79,7 @@ print("Starting video recording...")
 camera.start_recording()
 
 # move to pre-grasp pose
+# Use inverse kinetics (IK) to solve the joint position given a target end-effector pose
 qpos = franka.inverse_kinematics(
     link=end_effector,
     pos=np.array([0.65, 0.0, 0.25]),
@@ -93,6 +104,8 @@ for waypoint in path:
 scene.clear_debug_object(path_debug)
 
 # allow robot to reach the last waypoint
+#  Note that after we execute the path, we let the controller run for another 100 steps.
+#  This is because we are using a PD controller, and there will be a gap between the desired target position and the current position.
 for i in range(100):
     scene.step()
     camera.render()  # render camera for video recording
@@ -111,7 +124,9 @@ for i in range(100):
 
 # grasp
 franka.control_dofs_position(qpos[:-2], motors_dof)
-franka.control_dofs_force(np.array([-0.5, -0.5]), fingers_dof)
+franka.control_dofs_force(
+    np.array([-0.5, -0.5]), fingers_dof
+)  #  applied a 0.5N grasping force.
 
 for i in range(100):
     scene.step()
