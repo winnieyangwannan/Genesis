@@ -10,11 +10,25 @@ Forward Kinematics (FK): Given joint angles → Calculate where the end-effector
 Inverse Kinematics (IK): Given desired end-effector pose → Calculate what joint angles are needed
 
 
-- both IK solving and motion planning are two integrated methods of the robot entity.
 - For IK solving, you simply tell the robot’s IK solver which link is the end-effector, and specify the target pose.
-- Then, you tell the motion planner the target joint position (qpos) and it will return a planned and smoothed list of waypoints.
+
+- Use cases of IK solving in the current example:
+  - Pre-grasp position: Hand 25cm above the cube
+  - Reach position: Hand just above cube at 13cm height
+  - Lift position: Hand lifted to 28cm height
 
 
+What is Motion Planning?
+
+Motion planning is the process of finding a collision-free path for a robot to move from its current configuration to a goal configuration. 
+It's like GPS navigation, but for robots moving through joint space.
+
+Given: Current joint positions and goal joint positions
+Find: A smooth sequence of intermediate joint positions (waypoints) that:
+    - Connects start to goal
+    - Avoids collisions with obstacles and self-collisions
+    - Respects joint limits and velocity constraints
+    - Is smooth and efficient
 
 """
 
@@ -101,16 +115,22 @@ end_effector = franka.get_link("hand")
 qpos = franka.inverse_kinematics(
     link=end_effector,  # Which link to position (the "hand")
     pos=np.array([0.65, 0.0, 0.25]), # Target 3D position (x, y, z) in world coordinates (in meters)
-    quat=np.array([0, 1, 0, 0]), #  Target orientation (quaternion) --> defines which way the gripper points
+    quat=np.array([0, 1, 0, 0]), #  Target orientation (quaternion) --> defines which way the gripper points  # Gripper pointing downward
 )
 
 # gripper open pos
 qpos[-2:] = 0.04
+
+# Motion planning: plan a smooth path to the target joint position (qpos)
+# plan path 
+# Output: path --> a sequence of 200 joint configurations connecting current pose to goal
 path = franka.plan_path(
     qpos_goal=qpos,
-    num_waypoints=200,  # 2s duration
+    num_waypoints=200,  # 200 waypoints × 0.01s = 2 seconds of smooth motion
 )
+
 # draw the planned path
+# This draws the planned path in the viewer so you can visually see:
 path_debug = scene.draw_debug_path(path, franka)
 
 # execute the planned path
