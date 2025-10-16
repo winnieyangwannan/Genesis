@@ -292,13 +292,13 @@ class GraspEnv:
     # ------------ begin reward functions----------------
 
     # Task Objective:
-        # The robot must align its gripper fingers with specific keypoints on the object. This is measured by the reward function below:
-        # This is a precision grasping task focused on spatial alignment rather than functional grasping, designed to teach vision-based manipulation skills.
+    # The robot must align its gripper fingers with specific keypoints on the object. This is measured by the reward function below:
+    # This is a precision grasping task focused on spatial alignment rather than functional grasping, designed to teach vision-based manipulation skills.
     # Key Features:
-        # - 7 keypoints uniformly distributed along the object's surface
-        # - Reward: Exponential function of negative distance between finger keypoints and object keypoints
-        # - Episode length: 3 seconds (300 timesteps at 10ms control frequency)
-        # - Success metric: Close spatial alignment between gripper and object keypoints
+    # - 7 keypoints uniformly distributed along the object's surface
+    # - Reward: Exponential function of negative distance between finger keypoints and object keypoints
+    # - Episode length: 3 seconds (300 timesteps at 10ms control frequency)
+    # - Success metric: Close spatial alignment between gripper and object keypoints
     def _reward_keypoints(self) -> torch.Tensor:
         keypoints_offset = self.keypoints_offset
         # there is a offset between the finger tip and the finger base frame
@@ -359,7 +359,7 @@ class GraspEnv:
             * unit_length
         )
         return keypoint_offsets.unsqueeze(0).repeat(batch_size, 1, 1)
-   
+
     # Demo Behavior
     # The task follows a 4-phase sequence:
     # 1. Grasp (25%): Move to object with closed gripper
@@ -494,8 +494,8 @@ class Manipulator:
         """
         Genesis inverse kinematics
         """
-        delta_position = action[:, :3] # 3D position control
-        delta_orientation = action[:, 3:6] # 3D orientation control
+        delta_position = action[:, :3]  # 3D position control
+        delta_orientation = action[:, 3:6]  # 3D orientation control
 
         # compute target pose
         target_position = delta_position + self._ee_link.get_pos()
@@ -513,7 +513,7 @@ class Manipulator:
         """
         Damped least squares inverse kinematics
         """
-        delta_pose = action[:, :6] # 6-DOF action
+        delta_pose = action[:, :6]  # 6-DOF action
         lambda_val = 0.01
         jacobian = self._robot_entity.get_jacobian(link=self._ee_link)
         jacobian_T = jacobian.transpose(1, 2)
