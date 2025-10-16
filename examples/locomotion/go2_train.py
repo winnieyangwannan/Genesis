@@ -15,18 +15,19 @@ try:
         if metadata.version("rsl-rl-lib") != "2.2.4":
             raise ImportError
 except (metadata.PackageNotFoundError, ImportError) as e:
-    raise ImportError("Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'.") from e
-from rsl_rl.runners import OnPolicyRunner
-
+    raise ImportError(
+        "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
+    ) from e
 import genesis as gs
 
 from go2_env import Go2Env
+from rsl_rl.runners import OnPolicyRunner
 
 
 def log_train_time(start_time, end_time, args, log_dir):
     """Log training timing information to train_log.md"""
     duration = end_time - start_time
-    
+
     # Prepare log entry
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"""
@@ -41,12 +42,12 @@ def log_train_time(start_time, end_time, args, log_dir):
 
 ---
 """
-    
+
     # Append to log file
     log_file = f"{log_dir}/train_log.md"
     with open(log_file, "a") as f:
         f.write(log_entry)
-    
+
     print(f"Training timing logged to {log_file}")
 
 
@@ -88,7 +89,7 @@ def get_train_cfg(exp_name, max_iterations):
             "run_name": "",
         },
         "runner_class_name": "OnPolicyRunner",
-        "num_steps_per_env": 24, # Each simulated robot collects exactly 24 time steps ofexperience before the policy gets updated.
+        "num_steps_per_env": 24,  # Each simulated robot collects exactly 24 time steps ofexperience before the policy gets updated.
         "save_interval": 100,
         "empirical_normalization": None,
         "seed": 1,
@@ -181,7 +182,9 @@ def get_cfgs():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="go2-walking")
-    parser.add_argument("-B", "--num_envs", type=int, default=4096) # 4096 identical Go2 robots are simulated simultaneously onthe GPU, each learning the same walking task independently.
+    parser.add_argument(
+        "-B", "--num_envs", type=int, default=4096
+    )  # 4096 identical Go2 robots are simulated simultaneously onthe GPU, each learning the same walking task independently.
     parser.add_argument("--max_iterations", type=int, default=101)
     args = parser.parse_args()
 
@@ -201,7 +204,11 @@ def main():
     )
 
     env = Go2Env(
-        num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg
+        num_envs=args.num_envs,
+        env_cfg=env_cfg,
+        obs_cfg=obs_cfg,
+        reward_cfg=reward_cfg,
+        command_cfg=command_cfg,
     )
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
@@ -211,13 +218,17 @@ def main():
     print(f"Starting training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Training {args.num_envs} environments for {args.max_iterations} iterations")
 
-    runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
+    runner.learn(
+        num_learning_iterations=args.max_iterations, init_at_random_ep_len=True
+    )
 
     # End timing and log results
     train_end_time = time.time()
     print(f"Training completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Total training time: {train_end_time - train_start_time:.2f} seconds ({(train_end_time - train_start_time)/60:.2f} minutes)")
-    
+    print(
+        f"Total training time: {train_end_time - train_start_time:.2f} seconds ({(train_end_time - train_start_time)/60:.2f} minutes)"
+    )
+
     # Log the timing information
     log_train_time(train_start_time, train_end_time, args, log_dir)
 

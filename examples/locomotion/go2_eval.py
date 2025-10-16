@@ -27,13 +27,11 @@ from go2_env import Go2Env
 from rsl_rl.runners import OnPolicyRunner
 
 
-def log_eval_time(start_time, end_time, args, step_count):
+def log_eval_time(start_time, end_time, args, step_count, log_dir):
     """Log evaluation timing information to eval_log.md"""
     duration = end_time - start_time
 
     # Create log directory if it doesn't exist
-    log_dir = f"logs/{args.exp_name}"
-    log_dir.mkdir(exist_ok=True)
 
     # Prepare log entry
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -188,7 +186,7 @@ def main():
     print(f"Total evaluation time: {eval_end_time - eval_start_time:.2f} seconds")
 
     # Log the timing information
-    log_eval_time(eval_start_time, eval_end_time, args, step_count)
+    log_eval_time(eval_start_time, eval_end_time, args, step_count, log_dir)
 
 
 if __name__ == "__main__":

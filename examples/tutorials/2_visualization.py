@@ -4,10 +4,11 @@
 #
 # This tutorial demonstrates method 2 (camera rendering) for headless environments
 # where no display is available (e.g., remote development servers).
+# LINK: https://genesis-world.readthedocs.io/en/latest/user_guide/getting_started/visualization.html
 import genesis as gs
 
 
-# 1. Initialize Genesis (no display needed)import genesis as gs
+# 1. Initialize Genesis (no display needed)
 gs.init()
 
 # 2. Create a scene with a more detailed viewer and vis setting
