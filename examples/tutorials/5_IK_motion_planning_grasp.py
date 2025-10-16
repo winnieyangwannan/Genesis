@@ -2,9 +2,20 @@ import genesis as gs
 import numpy as np
 
 """
-both IK solving and motion planning are two integrated methods of the robot entity.
-For IK solving, you simply tell the robot’s IK solver which link is the end-effector, and specify the target pose.
-Then, you tell the motion planner the target joint position (qpos) and it will return a planned and smoothed list of waypoints.
+
+What is Inverse Kinematics?
+- Inverse kinematics is a mathematical technique to calculate the joint angles needed to position a robot's end-effector (like a gripper or hand) at a desired location and orientation in 3D space.
+
+Forward Kinematics (FK): Given joint angles → Calculate where the end-effector ends up
+Inverse Kinematics (IK): Given desired end-effector pose → Calculate what joint angles are needed
+
+
+- both IK solving and motion planning are two integrated methods of the robot entity.
+- For IK solving, you simply tell the robot’s IK solver which link is the end-effector, and specify the target pose.
+- Then, you tell the motion planner the target joint position (qpos) and it will return a planned and smoothed list of waypoints.
+
+
+
 """
 
 
@@ -42,14 +53,18 @@ franka = scene.add_entity(
     gs.morphs.MJCF(file="xml/franka_emika_panda/panda.xml"),
 )
 
+# For Franka robot: 9 values for joint position: 9 degrees of freedom  (7 arm joints + 2 gripper fingers)
+motors_dof = np.arange(7) # DOFs 0-6 (arm joints) - 7 joints
+fingers_dof = np.arange(7, 9) # # DOFs 7-8 (gripper fingers) - 2 fingers
 
 # set control gains
 # Note: the following values are tuned for achieving best behavior with Franka
 # Typically, each new robot would have a different set of parameters.
 # Sometimes high-quality URDF or XML file would also provide this and will be parsed.
+
 franka.set_dofs_kp(
     np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]),
-)
+) # First 7 values: Arm joint gains (higher values); Last 2 values: Gripper finger gains (lower values)
 franka.set_dofs_kv(
     np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]),
 )
@@ -68,23 +83,27 @@ camera = scene.add_camera(
 ########################## build ##########################
 scene.build()
 
-motors_dof = np.arange(7)
-fingers_dof = np.arange(7, 9)
 
-# get the end-effector link
-end_effector = franka.get_link("hand")
+
 
 # Start video recording
 print("Starting video recording...")
 camera.start_recording()
 
+# get the end-effector link
+end_effector = franka.get_link("hand")
+
 # move to pre-grasp pose
 # Use inverse kinetics (IK) to solve the joint position given a target end-effector pose
+# An array of joint positions (angles) for all degrees of freedom
+# For Franka robot: 9 values (7 arm joints + 2 gripper fingers)
+# Pre-grasp position: Hand 25cm above the cube
 qpos = franka.inverse_kinematics(
-    link=end_effector,
-    pos=np.array([0.65, 0.0, 0.25]),
-    quat=np.array([0, 1, 0, 0]),
+    link=end_effector,  # Which link to position (the "hand")
+    pos=np.array([0.65, 0.0, 0.25]), # Target 3D position (x, y, z) in world coordinates (in meters)
+    quat=np.array([0, 1, 0, 0]), #  Target orientation (quaternion) --> defines which way the gripper points
 )
+
 # gripper open pos
 qpos[-2:] = 0.04
 path = franka.plan_path(
@@ -111,6 +130,7 @@ for i in range(100):
     camera.render()  # render camera for video recording
 
 # reach
+# Reach position: Hand just above the cube at 13cm height
 qpos = franka.inverse_kinematics(
     link=end_effector,
     pos=np.array([0.65, 0.0, 0.130]),
@@ -133,6 +153,7 @@ for i in range(100):
     camera.render()  # render camera for video recording
 
 # lift
+# Lift position: Hand lifted to 28cm height
 qpos = franka.inverse_kinematics(
     link=end_effector,
     pos=np.array([0.65, 0.0, 0.28]),
