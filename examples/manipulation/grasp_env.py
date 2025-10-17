@@ -7,9 +7,36 @@ from genesis.utils.geom import transform_by_quat, transform_quat_by_quat, xyz_to
 
 
 class GraspEnv:
+    """
+    ### Observation Space
+    obs_tensor = torch.cat([
+    self.finger_pos - self.obj_pos,  # 3D position difference, 	Finger to object (x,y,z)
+    self.finger_quat,                # 4D Finger orientation, Quaternion (w,x,y,z)
+    self.obj_pos,                    # 3D position, World coordinates (x,y,z)
+    self.obj_quat                    # 4D orientation, Quaternion (w,x,y,z)
+    ], dim=-1)  # Shape: (num_envs, 14)
+
+    ### Action Space
+    num_actions = 6
+    # ├─ 0-2: End-effector position delta (dx, dy, dz) in meters
+    # └─ 3-5: End-effector orientation delta (droll, dpitch, dyaw) in radians
+
+    Control flow:
+    Actions → scaled by 0.05
+    Inverse kinematics (DLS solver) converts to joint positions
+    PD controller drives motors to target joint positions  
+
+    ### 
+    Grasp Environment: Task-Space Control
+    Why task space (Cartesian space)?
+    Task-centric goal: The objective is "move gripper to object position" - naturally expressed in 3D space
+    Intuitive learning: Policy learns geometric relationships (distance to object, approach direction)
+    IK handles complexity: Inverse kinematics automatically solves the joint configuration problem
+    Lower dimensional: 6 DOF (position + orientation) vs potentially 7+ joint angles for redundant arms
+    """
     def __init__(
         self,
-        env_cfg: dict,
+        env_cfg: dict,  
         reward_cfg: dict,
         robot_cfg: dict,
         show_viewer: bool = False,

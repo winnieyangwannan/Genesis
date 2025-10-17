@@ -16,6 +16,47 @@ def gs_rand_float(lower, upper, shape, device):
 
 
 class Go2Env:
+    """
+    ### OBSERVATION SPACE
+    obs = torch.cat([
+    base_ang_vel * 0.25,              # 3: base angular velocity, ωx, ωy, ωz in body frame
+    projected_gravity,                # 3: Gravity vector in body frame
+    commands * [2.0, 2.0, 0.25],      # 3: locomotion commands
+    (dof_pos - default) * 1.0,        # 12: joint angle deviations
+    dof_vel * 0.05,                   # 12: scaled joint velocities
+    actions,                          # 12: previous action
+    ], dim=-1)  # Shape: (num_envs, 45)
+    
+    ### ACTION SPACE
+    12-dimensional continuous actions for joint motors:
+    num_actions = 12  # 12 joints (3 per leg × 4 legs)
+
+    # Raw actions from policy
+    actions = torch.randn(num_envs, 12)  # Sample: mean=0, std=1
+
+    # Action processing (go2_env.py:228-230)
+    action_scale = 0.25
+    target_dof_pos = actions * action_scale + default_dof_pos
+
+    # Example:
+    # Default standing position: [0, 0.9, -1.8] per leg
+    # Policy outputs: [0.5, -0.3, 0.8, ...]
+    # Target positions: [0.125, 0.825, -1.6, ...] = 0.25*[0.5,-0.3,0.8] + [0,0.9,-1.8]
+    Joint mapping:
+    Action indices → Joint names:
+    0-2:  FR (front-right) [hip, thigh, calf]
+    3-5:  FL (front-left)  [hip, thigh, calf]
+    6-8:  RR (rear-right)  [hip, thigh, calf]
+    9-11: RL (rear-left)   [hip, thigh, calf]
+
+
+
+    Go2 Locomotion: Joint-Space Control
+    Why joint space?
+    Learning spatial patterns: Locomotion involves rhythmic, coordinated joint movements (gait patterns)
+    Natural for periodic motion: Legged locomotion is fundamentally about joint coordination - hip/thigh/calf moving in synchronized patterns
+    No unique solution: For locomotion, there's no single "correct" foot position - the policy explores different gait strategies
+    """
 
     def __init__(
         self,
